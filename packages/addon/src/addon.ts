@@ -562,22 +562,29 @@ builder.defineStreamHandler(
         }
       }
 
-      // Sort streams based on user preference
+      // Sort the streams ONCE, by user preference, using the per-stream metadata
+      // precomputed in mapStream (`_sort`) — no per-comparison string parsing.
+      // This single sort runs BEFORE filtering, so the per-quality limiter below
+      // slices the sorted order (preserving prior behavior); filtering keeps
+      // relative order, so no post-filter re-sort is needed.
+      const sortMetaOf = (s: Stream): SortMeta =>
+        (s as { _sort?: SortMeta })._sort ?? {
+          qualityScore: 0,
+          sizeUnit: '',
+          sizeValue: 0,
+          dateMs: 0,
+          hasPreferredLang: false,
+        };
+
       if (sortingPreference === 'language_first' && preferredLang) {
         logger.debug(`Applying language-first sorting for language: ${preferredLang}`);
 
-        // Special handling for language-first sorting
-        // First, separate streams by language
+        // Split into preferred-language and other streams, sort each by quality
+        // then size, then concatenate (preferred group first).
         const preferredLangStreams: Stream[] = [];
         const otherStreams: Stream[] = [];
-
-        // Split streams into two groups
         for (const stream of streams) {
-          const file = (stream as any)._temp?.file;
-          const hasPreferredLang =
-            file?.alangs && Array.isArray(file.alangs) && file.alangs.includes(preferredLang);
-
-          if (hasPreferredLang) {
+          if (sortMetaOf(stream).hasPreferredLang) {
             preferredLangStreams.push(stream);
           } else {
             otherStreams.push(stream);
@@ -588,221 +595,57 @@ builder.defineStreamHandler(
           `Found ${preferredLangStreams.length} streams with preferred language and ${otherStreams.length} other streams`
         );
 
-        // Sort each group by quality and size
         const sortByQualityAndSize = (a: Stream, b: Stream) => {
-          // Extract quality info
-          const aDesc = a.description?.split('\n') || [];
-          const bDesc = b.description?.split('\n') || [];
-          const aQuality = a.name?.includes('\n') ? a.name.split('\n')[1] : '';
-          const bQuality = b.name?.includes('\n') ? b.name.split('\n')[1] : '';
-
-          // Get quality scores with improved 4K detection
-          const getQualityScore = (quality: string): number => {
-            if (!quality) return 0;
-
-            // Standardize the quality string for comparison
-            const q = quality.toUpperCase();
-
-            // Check for 4K indicators (multiple ways to indicate 4K)
-            if (
-              q.includes('4K') ||
-              q.includes('2160P') ||
-              q.includes('UHD') ||
-              q.includes('2160') ||
-              q.includes('ULTRA HD')
-            )
-              return 4;
-
-            // Check for 1080p
-            if (q.includes('1080P') || q.includes('1080')) return 3;
-
-            // Check for 720p
-            if (q.includes('720P') || q.includes('720')) return 2;
-
-            // Check for 480p/SD
-            if (q.includes('480P') || q.includes('480') || q.includes('SD')) return 1;
-
-            return 0;
-          };
-          const aScore = getQualityScore(aQuality);
-          const bScore = getQualityScore(bQuality);
-
-          // Compare quality scores
-          if (aScore !== bScore) {
-            return bScore - aScore;
-          }
-
-          // Compare sizes
-          const aSize = aDesc.length > 2 ? aDesc[2] : '';
-          const bSize = bDesc.length > 2 ? bDesc[2] : '';
-
-          if (aSize.includes('GB') && bSize.includes('GB')) {
-            const aGB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-            const bGB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-            if (aGB > bGB) return -1;
-            if (aGB < bGB) return 1;
-          }
-
-          if (aSize.includes('GB') && bSize.includes('MB')) return -1;
-          if (aSize.includes('MB') && bSize.includes('GB')) return 1;
-
-          if (aSize.includes('MB') && bSize.includes('MB')) {
-            const aMB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-            const bMB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-            if (aMB > bMB) return -1;
-            if (aMB < bMB) return 1;
-          }
-
-          return 0;
+          const am = sortMetaOf(a);
+          const bm = sortMetaOf(b);
+          if (am.qualityScore !== bm.qualityScore) return bm.qualityScore - am.qualityScore;
+          return compareSizeMeta(am, bm);
         };
 
-        // Sort each group independently
         preferredLangStreams.sort(sortByQualityAndSize);
         otherStreams.sort(sortByQualityAndSize);
 
-        // Replace streams array with the concatenated sorted groups
         streams.length = 0;
         streams.push(...preferredLangStreams, ...otherStreams);
       } else {
-        // Original sorting for other preferences
         streams.sort((a, b) => {
-          // Extract stream data
-          const aFile = (a as any)._temp?.file;
-          const bFile = (b as any)._temp?.file;
-          const aHasPreferredLang = preferredLang && aFile?.alangs?.includes(preferredLang);
-          const bHasPreferredLang = preferredLang && bFile?.alangs?.includes(preferredLang);
+          const am = sortMetaOf(a);
+          const bm = sortMetaOf(b);
 
-          // Extract quality info
-          const aDesc = a.description?.split('\n') || [];
-          const bDesc = b.description?.split('\n') || [];
-          const aQuality = a.name?.includes('\n') ? a.name.split('\n')[1] : '';
-          const bQuality = b.name?.includes('\n') ? b.name.split('\n')[1] : '';
-
-          // Get quality scores with improved 4K detection
-          const getQualityScore = (quality: string): number => {
-            if (!quality) return 0;
-
-            // Standardize the quality string for comparison
-            const q = quality.toUpperCase();
-
-            // Check for 4K indicators (multiple ways to indicate 4K)
-            if (
-              q.includes('4K') ||
-              q.includes('2160P') ||
-              q.includes('UHD') ||
-              q.includes('2160') ||
-              q.includes('ULTRA HD')
-            )
-              return 4;
-
-            // Check for 1080p
-            if (q.includes('1080P') || q.includes('1080')) return 3;
-
-            // Check for 720p
-            if (q.includes('720P') || q.includes('720')) return 2;
-
-            // Check for 480p/SD
-            if (q.includes('480P') || q.includes('480') || q.includes('SD')) return 1;
-
-            return 0;
-          };
-          const aScore = getQualityScore(aQuality);
-          const bScore = getQualityScore(bQuality);
-
-          // Size comparison logic
-          const compareSize = () => {
-            const aSize = aDesc.length > 2 ? aDesc[2] : '';
-            const bSize = bDesc.length > 2 ? bDesc[2] : '';
-
-            // Extract only the size part (before any date information)
-            const aSizePart = aSize.split('📅')[0].trim();
-            const bSizePart = bSize.split('📅')[0].trim();
-
-            if (aSizePart.includes('GB') && bSizePart.includes('GB')) {
-              const aGB = parseFloat(aSizePart.match(/[\d.]+/)?.[0] || '0');
-              const bGB = parseFloat(bSizePart.match(/[\d.]+/)?.[0] || '0');
-              if (aGB > bGB) return -1;
-              if (aGB < bGB) return 1;
-            }
-
-            if (aSizePart.includes('GB') && bSizePart.includes('MB')) return -1;
-            if (aSizePart.includes('MB') && bSizePart.includes('GB')) return 1;
-
-            if (aSizePart.includes('MB') && bSizePart.includes('MB')) {
-              const aMB = parseFloat(aSizePart.match(/[\d.]+/)?.[0] || '0');
-              const bMB = parseFloat(bSizePart.match(/[\d.]+/)?.[0] || '0');
-              if (aMB > bMB) return -1;
-              if (aMB < bMB) return 1;
-            }
-
-            return 0;
-          };
-
-          // Apply sorting based on user preference
           switch (sortingPreference) {
-            case 'size_first':
-              // Size first, then quality, then language
-              const sizeCompare = compareSize();
-              if (sizeCompare !== 0) {
-                return sizeCompare;
-              }
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
+            case 'size_first': {
+              const sizeCompare = compareSizeMeta(am, bm);
+              if (sizeCompare !== 0) return sizeCompare;
+              if (am.qualityScore !== bm.qualityScore) return bm.qualityScore - am.qualityScore;
+              if (am.hasPreferredLang !== bm.hasPreferredLang) return am.hasPreferredLang ? -1 : 1;
               return 0;
+            }
 
-            case 'date_first':
-              // Sort by date first using the file's date info
-              const aDate = aFile?.['5'] ? new Date(aFile['5']).getTime() : 0;
-              const bDate = bFile?.['5'] ? new Date(bFile['5']).getTime() : 0;
-              if (aDate !== bDate) {
-                // Higher date value (more recent) comes first - descending order
-                return bDate - aDate;
-              }
-              // Then quality
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              // Then language
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              // Then size
-              return compareSize();
+            case 'date_first': {
+              if (am.dateMs !== bm.dateMs) return bm.dateMs - am.dateMs;
+              if (am.qualityScore !== bm.qualityScore) return bm.qualityScore - am.qualityScore;
+              if (am.hasPreferredLang !== bm.hasPreferredLang) return am.hasPreferredLang ? -1 : 1;
+              return compareSizeMeta(am, bm);
+            }
 
             case 'lang_first':
-            case 'language_first':
-              // Language first, then quality, then size
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              return compareSize();
+            case 'language_first': {
+              if (am.hasPreferredLang !== bm.hasPreferredLang) return am.hasPreferredLang ? -1 : 1;
+              if (am.qualityScore !== bm.qualityScore) return bm.qualityScore - am.qualityScore;
+              return compareSizeMeta(am, bm);
+            }
 
             case 'quality_first':
-            default:
-              // Quality first (default), then language, then size
-              // Make sure the quality score comparison is working
-              if (aScore !== bScore) {
-                // Higher quality score first - ensure descending order
-                return bScore - aScore;
-              }
-              // Then language
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              // Then size
-              return compareSize();
+            default: {
+              if (am.qualityScore !== bm.qualityScore) return bm.qualityScore - am.qualityScore;
+              if (am.hasPreferredLang !== bm.hasPreferredLang) return am.hasPreferredLang ? -1 : 1;
+              return compareSizeMeta(am, bm);
+            }
           }
         });
       }
 
-      // After all streams have been collected, first filter and limit them based on user settings
+      // After sorting, filter and limit based on user settings
       const originalCount = streams.length;
       if (streams.length > 0) {
         logger.debug(`Starting filters with ${originalCount} streams`);
@@ -940,242 +783,6 @@ builder.defineStreamHandler(
         logger.info(`Filtering complete: ${originalCount} streams → ${streams.length} streams`);
       }
 
-      // Now sort the filtered streams based on user preference
-      if (sortingPreference === 'language_first' && preferredLang) {
-        logger.debug(`Applying language-first sorting for language: ${preferredLang}`);
-
-        // Special handling for language-first sorting
-        // First, separate streams by language
-        const preferredLangStreams: Stream[] = [];
-        const otherStreams: Stream[] = [];
-
-        // Split streams into two groups
-        for (const stream of streams) {
-          const file = (stream as any)._temp?.file;
-          const hasPreferredLang =
-            file?.alangs && Array.isArray(file.alangs) && file.alangs.includes(preferredLang);
-
-          if (hasPreferredLang) {
-            preferredLangStreams.push(stream);
-          } else {
-            otherStreams.push(stream);
-          }
-        }
-
-        logger.debug(
-          `Sorting: ${preferredLangStreams.length} streams with preferred language and ${otherStreams.length} other streams`
-        );
-
-        // Sort each group by quality and size
-        const sortByQualityAndSize = (a: Stream, b: Stream) => {
-          // Extract quality info
-          const aDesc = a.description?.split('\n') || [];
-          const bDesc = b.description?.split('\n') || [];
-          const aQuality = a.name?.includes('\n') ? a.name.split('\n')[1] : '';
-          const bQuality = b.name?.includes('\n') ? b.name.split('\n')[1] : '';
-
-          // Get quality scores with improved 4K detection
-          const getQualityScore = (quality: string): number => {
-            if (!quality) return 0;
-
-            // Standardize the quality string for comparison
-            const q = quality.toUpperCase();
-
-            // Check for 4K indicators (multiple ways to indicate 4K)
-            if (
-              q.includes('4K') ||
-              q.includes('2160P') ||
-              q.includes('UHD') ||
-              q.includes('2160') ||
-              q.includes('ULTRA HD')
-            )
-              return 4;
-
-            // Check for 1080p
-            if (q.includes('1080P') || q.includes('1080')) return 3;
-
-            // Check for 720p
-            if (q.includes('720P') || q.includes('720')) return 2;
-
-            // Check for 480p/SD
-            if (q.includes('480P') || q.includes('480') || q.includes('SD')) return 1;
-
-            return 0;
-          };
-          const aScore = getQualityScore(aQuality);
-          const bScore = getQualityScore(bQuality);
-
-          // Compare quality scores
-          if (aScore !== bScore) {
-            return bScore - aScore;
-          }
-
-          // Compare sizes
-          const aSize = aDesc.length > 2 ? aDesc[2] : '';
-          const bSize = bDesc.length > 2 ? bDesc[2] : '';
-
-          if (aSize.includes('GB') && bSize.includes('GB')) {
-            const aGB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-            const bGB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-            if (aGB > bGB) return -1;
-            if (aGB < bGB) return 1;
-          }
-
-          if (aSize.includes('GB') && bSize.includes('MB')) return -1;
-          if (aSize.includes('MB') && bSize.includes('GB')) return 1;
-
-          if (aSize.includes('MB') && bSize.includes('MB')) {
-            const aMB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-            const bMB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-            if (aMB > bMB) return -1;
-            if (aMB < bMB) return 1;
-          }
-
-          return 0;
-        };
-
-        // Sort each group independently
-        preferredLangStreams.sort(sortByQualityAndSize);
-        otherStreams.sort(sortByQualityAndSize);
-
-        // Replace streams array with the concatenated sorted groups
-        streams.length = 0;
-        streams.push(...preferredLangStreams, ...otherStreams);
-      } else {
-        // Original sorting for other preferences
-        streams.sort((a, b) => {
-          // Extract stream data
-          const aFile = (a as any)._temp?.file;
-          const bFile = (b as any)._temp?.file;
-          const aHasPreferredLang = preferredLang && aFile?.alangs?.includes(preferredLang);
-          const bHasPreferredLang = preferredLang && bFile?.alangs?.includes(preferredLang);
-
-          // Extract quality info
-          const aDesc = a.description?.split('\n') || [];
-          const bDesc = b.description?.split('\n') || [];
-          const aQuality = a.name?.includes('\n') ? a.name.split('\n')[1] : '';
-          const bQuality = b.name?.includes('\n') ? b.name.split('\n')[1] : '';
-
-          // Get quality scores with improved 4K detection
-          const getQualityScore = (quality: string): number => {
-            if (!quality) return 0;
-
-            // Standardize the quality string for comparison
-            const q = quality.toUpperCase();
-
-            // Check for 4K indicators (multiple ways to indicate 4K)
-            if (
-              q.includes('4K') ||
-              q.includes('2160P') ||
-              q.includes('UHD') ||
-              q.includes('2160') ||
-              q.includes('ULTRA HD')
-            )
-              return 4;
-
-            // Check for 1080p
-            if (q.includes('1080P') || q.includes('1080')) return 3;
-
-            // Check for 720p
-            if (q.includes('720P') || q.includes('720')) return 2;
-
-            // Check for 480p/SD
-            if (q.includes('480P') || q.includes('480') || q.includes('SD')) return 1;
-
-            return 0;
-          };
-          const aScore = getQualityScore(aQuality);
-          const bScore = getQualityScore(bQuality);
-
-          // Size comparison logic
-          const compareSize = () => {
-            const aSize = aDesc.length > 2 ? aDesc[2] : '';
-            const bSize = bDesc.length > 2 ? bDesc[2] : '';
-
-            if (aSize.includes('GB') && bSize.includes('GB')) {
-              const aGB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-              const bGB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-              if (aGB > bGB) return -1;
-              if (aGB < bGB) return 1;
-            }
-
-            if (aSize.includes('GB') && bSize.includes('MB')) return -1;
-            if (aSize.includes('MB') && bSize.includes('GB')) return 1;
-
-            if (aSize.includes('MB') && bSize.includes('MB')) {
-              const aMB = parseFloat(aSize.match(/[\d.]+/)?.[0] || '0');
-              const bMB = parseFloat(bSize.match(/[\d.]+/)?.[0] || '0');
-              if (aMB > bMB) return -1;
-              if (aMB < bMB) return 1;
-            }
-
-            return 0;
-          };
-
-          // Apply sorting based on user preference
-          switch (sortingPreference) {
-            case 'size_first':
-              // Size first, then quality, then language
-              const sizeCompare = compareSize();
-              if (sizeCompare !== 0) {
-                return sizeCompare;
-              }
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              return 0;
-
-            case 'date_first':
-              // Sort by date first using the file's date info
-              const aDate = aFile?.['5'] ? new Date(aFile['5']).getTime() : 0;
-              const bDate = bFile?.['5'] ? new Date(bFile['5']).getTime() : 0;
-              if (aDate !== bDate) {
-                // Higher date value (more recent) comes first - descending order
-                return bDate - aDate;
-              }
-              // Then quality
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              // Then language
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              // Then size
-              return compareSize();
-
-            case 'lang_first':
-            case 'language_first':
-              // Language first, then quality, then size
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              if (aScore !== bScore) {
-                return bScore - aScore;
-              }
-              return compareSize();
-
-            case 'quality_first':
-            default:
-              // Quality first (default), then language, then size
-              // Make sure the quality score comparison is working
-              if (aScore !== bScore) {
-                // Higher quality score first - ensure descending order
-                return bScore - aScore;
-              }
-              // Then language
-              if (aHasPreferredLang !== bHasPreferredLang) {
-                return aHasPreferredLang ? -1 : 1;
-              }
-              // Then size
-              return compareSize();
-          }
-        });
-      }
-
       if (streams.length > 0) {
         const qualitySummary: Record<string, number> = {};
         streams.forEach(stream => {
@@ -1192,10 +799,10 @@ builder.defineStreamHandler(
         logger.info(`Found 0 streams total for ${id}`);
       }
 
-      // Remove the internal sorting helper before caching/returning so the raw
-      // Easynews file payload is neither serialized to clients nor held in cache.
+      // Remove the internal sort metadata before caching/returning so it is
+      // neither serialized to clients nor held in cache.
       for (const stream of streams) {
-        delete (stream as { _temp?: unknown })._temp;
+        delete (stream as { _sort?: unknown })._sort;
       }
 
       // Cache the result and return it WITH the cache options so even the cold
@@ -1226,6 +833,61 @@ builder.defineStreamHandler(
     }
   }
 );
+
+// Per-stream sorting metadata, precomputed ONCE in mapStream so the sort
+// comparator never re-parses the human-readable name/description strings. These
+// fields reproduce exactly what the previous in-comparator parsing derived.
+type SortMeta = {
+  qualityScore: number;
+  sizeUnit: 'GB' | 'MB' | '';
+  sizeValue: number;
+  dateMs: number;
+  hasPreferredLang: boolean;
+};
+
+// Quality label → score. Operates on the same label that goes into the stream
+// name (`Easynews++\n<quality>`), so it matches the old getQualityScore exactly.
+function qualityScoreFromLabel(quality: string | undefined): number {
+  if (!quality) return 0;
+  const q = quality.toUpperCase();
+  if (
+    q.includes('4K') ||
+    q.includes('2160P') ||
+    q.includes('UHD') ||
+    q.includes('2160') ||
+    q.includes('ULTRA HD')
+  )
+    return 4;
+  if (q.includes('1080P') || q.includes('1080')) return 3;
+  if (q.includes('720P') || q.includes('720')) return 2;
+  if (q.includes('480P') || q.includes('480') || q.includes('SD')) return 1;
+  return 0;
+}
+
+// Parse the displayed size string (file['4'], e.g. "1.5 GB" / "700 MB") into a
+// unit + number, mirroring the old comparator's GB/MB detection and first-number
+// extraction.
+function parseSizeForSort(size: string | undefined): { unit: 'GB' | 'MB' | ''; value: number } {
+  const s = size ?? '';
+  if (s.includes('GB')) return { unit: 'GB', value: parseFloat(s.match(/[\d.]+/)?.[0] || '0') };
+  if (s.includes('MB')) return { unit: 'MB', value: parseFloat(s.match(/[\d.]+/)?.[0] || '0') };
+  return { unit: '', value: 0 };
+}
+
+// Reproduces the original size comparison EXACTLY, including its quirk that any
+// GB file outranks any MB file regardless of the actual numbers; same-unit
+// compares by value descending; anything unparseable compares equal.
+function compareSizeMeta(a: SortMeta, b: SortMeta): number {
+  if (a.sizeUnit === 'GB' && b.sizeUnit === 'GB') {
+    return a.sizeValue > b.sizeValue ? -1 : a.sizeValue < b.sizeValue ? 1 : 0;
+  }
+  if (a.sizeUnit === 'GB' && b.sizeUnit === 'MB') return -1;
+  if (a.sizeUnit === 'MB' && b.sizeUnit === 'GB') return 1;
+  if (a.sizeUnit === 'MB' && b.sizeUnit === 'MB') {
+    return a.sizeValue > b.sizeValue ? -1 : a.sizeValue < b.sizeValue ? 1 : 0;
+  }
+  return 0;
+}
 
 function mapStream({
   duration,
@@ -1267,7 +929,20 @@ function mapStream({
     ? `🌐 ${file.alangs.join(', ')}${preferredLang && file.alangs.includes(preferredLang) ? ' ⭐' : ''}`
     : '🌐 Unknown';
 
-  const stream: Stream & { _temp?: any } = {
+  // Precompute everything the sort comparator needs, once, so it never re-parses
+  // the display strings below. Stripped off again before the response is cached
+  // or returned (see the cleanup loop in the handler).
+  const parsedSize = parseSizeForSort(size);
+  const sortMeta: SortMeta = {
+    qualityScore: qualityScoreFromLabel(quality),
+    sizeUnit: parsedSize.unit,
+    sizeValue: parsedSize.value,
+    dateMs: file['5'] ? new Date(file['5']).getTime() : 0,
+    hasPreferredLang:
+      !!preferredLang && Array.isArray(file.alangs) && file.alangs.includes(preferredLang),
+  };
+
+  const stream: Stream & { _sort?: SortMeta } = {
     name: `Easynews++${quality ? `\n${quality}` : ''}`,
     description: [
       `${title}${fileExtension}`,
@@ -1280,8 +955,8 @@ function mapStream({
       notWebReady: true,
       filename: `${title}${fileExtension}`,
     },
-    // Add temporary property with file data for sorting
-    _temp: { file },
+    // Precomputed sort keys (internal; removed before returning).
+    _sort: sortMeta,
   };
 
   return stream;
