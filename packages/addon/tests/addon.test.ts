@@ -8,6 +8,7 @@ vi.mock('../src/manifest', () => ({
     name: 'Easynews++',
     description: 'Easynews++ Addon',
     version: '1.0.0',
+    catalogs: [],
     resources: ['stream'],
     types: ['movie', 'series'],
   },
@@ -75,9 +76,9 @@ vi.mock('../src/i18n', () => ({
   },
 }));
 
-vi.mock('stremio-addon-sdk/src/builder', () => {
+vi.mock('@stremio-addon/compat', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
+    addonBuilder: vi.fn().mockImplementation(() => ({
       defineStreamHandler: vi.fn().mockImplementation(handler => {
         // Store the handler for testing
         (global as any).streamHandler = handler;

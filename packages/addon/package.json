@@ -1,6 +1,7 @@
 {
   "name": "easynews-plus-plus-addon",
   "version": "1.0.0",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -13,14 +14,13 @@
     "start:dev": "tsx watch src/server.ts"
   },
   "description": "Addon package for Easynews++",
-  "devDependencies": {
-    "@types/stremio-addon-sdk": "^1.6.12"
-  },
   "dependencies": {
+    "@stremio-addon/compat": "^1.0.0",
+    "@stremio-addon/node-express": "^1.0.0",
+    "@stremio-addon/sdk": "^1.0.0",
+    "axios": "^1.5.0",
     "easynews-plus-plus-api": "file:../api",
     "easynews-plus-plus-shared": "file:../shared",
-    "parse-torrent-title": "^1.4.0",
-    "stremio-addon-sdk": "^1.6.10",
-    "axios": "^1.5.0"
+    "parse-torrent-title": "^1.4.0"
   }
 }

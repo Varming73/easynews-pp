@@ -1,6 +1,6 @@
-import { Manifest } from 'stremio-addon-sdk';
-import { getTranslations, ISO_TO_LANGUAGE } from './i18n';
-import { logger } from './utils';
+import type { Manifest } from '@stremio-addon/sdk';
+import { getTranslations, ISO_TO_LANGUAGE } from './i18n/index.js';
+import { logger } from './utils.js';
 
 function landingTemplate(manifest: Manifest): string {
   const configurationFields = manifest.config || [];

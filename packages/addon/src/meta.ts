@@ -1,6 +1,6 @@
-import { extractDigits, getAlternativeTitles, sanitizeTitle } from './utils';
+import { extractDigits, getAlternativeTitles, sanitizeTitle } from './utils.js';
 import { createLogger } from 'easynews-plus-plus-shared';
-import { ISO_TO_LANGUAGE, ADDITIONAL_LANGUAGE_CODES } from './i18n';
+import { ISO_TO_LANGUAGE, ADDITIONAL_LANGUAGE_CODES } from './i18n/index.js';
 
 // Create a logger with Meta prefix and explicitly set the level from environment variable
 export const logger = createLogger({

@@ -1,18 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "src",
     "outDir": "dist",
     "resolveJsonModule": true,
     "composite": true,
     "declaration": true
   },
-  "include": [
-    "src/**/*",
-    "stremio-addon-sdk-builder.d.ts",
-    "stremio-addon-sdk.d.ts",
-    "follow-redirects.d.ts"
-  ],
+  "include": ["src/**/*", "follow-redirects.d.ts"],
   "exclude": ["**/*.test.ts"],
   "references": [
     {
