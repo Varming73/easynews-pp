@@ -244,6 +244,74 @@ async function main() {
     }
   }
 
+  // ── Test (4): resolved-URL headers (the notWebReady relaxation decision) ─────
+  // notWebReady is a CONTENT property: a stream is web-ready only if it's an MP4
+  // (H.264/AAC) served over https with a usable content-type + range support, and
+  // — for the Stremio WEB player specifically — CORS. We can only learn the CDN's
+  // headers at runtime, hence this probe. Fetched WITHOUT credentials, exactly as
+  // the player would after the 307. Prefer an MP4 candidate from the results so
+  // the web verdict is meaningful (the biggest file is usually a 4K HEVC mkv).
+  console.log(`\n── Test 4: resolved-URL headers (for the notWebReady decision) ──`);
+  const containerOf = f => (f['11'] ?? f['2'] ?? '').toString().toLowerCase();
+  const mp4Candidate = files.find(f => containerOf(f) === '.mp4');
+  const probeFile = mp4Candidate ?? file;
+  if (mp4Candidate) {
+    console.log(
+      `  Probing an MP4 candidate from the results: ${probeFile['10']}${containerOf(probeFile)}`
+    );
+  } else {
+    console.log(
+      `  No MP4 in the result set — probing the picked file instead (web verdict will be inconclusive).`
+    );
+  }
+  try {
+    const probeHops = await probeRedirects(buildCleanUrl(res, probeFile));
+    const probeFinalUrl = probeHops[probeHops.length - 1].url;
+    const r = await fetch(probeFinalUrl, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-0' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    const ct = r.headers.get('content-type') || '(none)';
+    const ar = r.headers.get('accept-ranges') || '(none)';
+    const cors = r.headers.get('access-control-allow-origin') || '(none)';
+    const container = containerOf(probeFile);
+    const vcodec = (probeFile['12'] || '').toString();
+
+    console.log(`  status: ${r.status}`);
+    console.log(`  content-type: ${ct}`);
+    console.log(`  accept-ranges: ${ar}`);
+    console.log(`  access-control-allow-origin: ${cors}`);
+    console.log(`  probed file container: ${container || '?'}, video codec: ${vcodec || '?'}`);
+
+    const isMp4 = container === '.mp4';
+    const ctOk = /video\/mp4/i.test(ct);
+    // The CDN returned 206 to a Range request even without advertising
+    // accept-ranges, so treat a 206 as range support too.
+    const rangesOk = /bytes/i.test(ar) || r.status === 206;
+    const corsOk = cors !== '(none)';
+
+    console.log(`\n  notWebReady relaxation assessment (probed file):`);
+    console.log(
+      `    mp4? ${isMp4 ? 'yes' : 'no'}   content-type video/mp4? ${ctOk ? 'yes' : 'no'}   ` +
+        `range support? ${rangesOk ? 'yes' : 'no'}   CORS present? ${corsOk ? 'yes' : 'no'}`
+    );
+    if (isMp4 && ctOk && rangesOk) {
+      console.log(
+        corsOk
+          ? `  ✓ VERDICT: native AND web direct-play look safe for mp4 (CORS present) — notWebReady could be dropped for mp4.`
+          : `  ⚠ VERDICT: native direct-play safe, but the WEB player would break (no CORS). Relax notWebReady only for non-web clients; keep it for web.`
+      );
+    } else {
+      console.log(
+        `  → Not a clean web-ready profile (need mp4 + content-type video/mp4 + range support). Keep notWebReady for this file.`
+      );
+    }
+  } catch (e) {
+    console.log(`  Could not fetch resolved-URL headers: ${e?.message ?? e}`);
+  }
+
   console.log(
     `\nDone. Re-run with a heavier title (e.g. a 4K remux) to compare:\n  EASYNEWS_USER=… EASYNEWS_PASS=… node scripts/diagnose-streaming.mjs "Dune Part Two 2024"\n`
   );

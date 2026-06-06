@@ -85,3 +85,24 @@ call count. The win scales with the number of title variants: K searches take
 ⌈K/concurrency⌉ batches instead of K sequential round-trips (e.g. 6 variants →
 ~3× at concurrency 5). Real-world wall-clock gains will be somewhere below these
 idealized figures because actual per-call latency varies.
+
+## Phase 5 — notWebReady decision (RESOLVED: keep it)
+
+`scripts/diagnose-streaming.mjs` Test 4 fetches the resolved CDN URL (no auth, as
+the player does after the 307) and inspects the headers that govern direct-play.
+Observed consistently across several titles (Inception, Frozen, …):
+
+| Header                        | Value                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `content-type`                | `video/x-matroska` (the top results are 4K HEVC **mkv**)                |
+| `accept-ranges`               | _absent_ (but the CDN still answers `Range` with `206`, so ranges work) |
+| `access-control-allow-origin` | **absent**                                                              |
+
+**Verdict: do NOT relax `notWebReady`.** The CDN sends no CORS header, so the
+Stremio **web player cannot direct-play** the stream regardless of container —
+dropping `notWebReady` would _break_ web playback that currently works through the
+transcode/proxy path. A native-only relaxation for `.mp4`/H.264 is theoretically
+possible, but the result sets are dominated by mkv/HEVC (no mp4 appeared in the
+top-50-by-size for the titles tested), so the upside is small and the regression
+risk real. `notWebReady` stays hardcoded. (Re-run Test 4 if Easynews ever adds
+CORS to the CDN; that would reopen the native+web relaxation.)
