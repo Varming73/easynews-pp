@@ -1,17 +1,22 @@
 import { Hono } from 'hono';
-import { getRouter } from 'hono-stremio';
+import { createRouter } from '@stremio-addon/sdk';
 import { addonInterface, customTemplate } from 'easynews-plus-plus-addon';
-import { getUILanguage } from 'easynews-plus-plus-addon/dist/i18n';
+import { getUILanguage } from 'easynews-plus-plus-addon/dist/i18n/index.js';
 import { createLogger } from 'easynews-plus-plus-shared';
 
 // Create a logger with CF prefix for better context and set Cloudflare environment
 const logger = createLogger({ prefix: 'CF', isCloudflare: true });
 
-// Create the router with the default HTML
+// Bridge the framework-agnostic community-SDK router into Hono.
+// The SDK serves the protocol endpoints (/manifest.json, /stream/...); the
+// landing/configure UI is served by our own routes below.
 logger.debug('Initializing Cloudflare Worker with addon interface');
-const defaultHTML = customTemplate(addonInterface.manifest);
-logger.debug(`Generated default HTML template (${defaultHTML.length} bytes)`);
-const addonRouter = getRouter(addonInterface, { landingHTML: defaultHTML });
+const stremioRouter = createRouter(addonInterface);
+const addonRouter = new Hono();
+addonRouter.all('*', async c => {
+  const res = await stremioRouter(c.req.raw);
+  return res ?? c.notFound();
+});
 logger.debug('Created Stremio router with addon interface');
 
 const app = new Hono();
@@ -147,7 +152,7 @@ if ((addonInterface.manifest.config || []).length > 0) {
   logger.debug('Addon has no configuration, keeping default root route');
 }
 
-app.route('/', addonRouter as any);
+app.route('/', addonRouter);
 logger.info('Router setup complete, Cloudflare Worker initialized');
 
 export default app;

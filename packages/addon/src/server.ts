@@ -1,14 +1,15 @@
+import * as fsModule from 'fs';
 import express, { Request, Response, NextFunction } from 'express';
-import { AddonInterface } from 'stremio-addon-sdk';
+import type { AddonInterface } from '@stremio-addon/sdk';
 import { Buffer } from 'buffer';
-import { http, https } from 'follow-redirects';
+// follow-redirects is CommonJS; under ESM it must be default-imported, then destructured
+import followRedirects from 'follow-redirects';
+const { http, https } = followRedirects;
 import { IncomingMessage } from 'http';
 import path from 'path';
-// Import getRouter manually since TypeScript definitions are incomplete
-// @ts-ignore
-import getRouter from 'stremio-addon-sdk/src/getRouter';
-import customTemplate from './custom-template';
-import { addonInterface } from './addon';
+import { getRouter } from '@stremio-addon/node-express';
+import customTemplate from './custom-template.js';
+import { addonInterface } from './addon.js';
 import { URL } from 'url';
 import { createLogger, getVersion } from 'easynews-plus-plus-shared';
 
@@ -45,8 +46,8 @@ function createManifestWithLanguage(addonInterface: AddonInterface, lang: string
 }
 
 function serveHTTP(addonInterface: AddonInterface, opts: ServerOptions = {}) {
-  if (addonInterface.constructor.name !== 'AddonInterface') {
-    throw new Error('first argument must be an instance of AddonInterface');
+  if (!addonInterface?.manifest) {
+    throw new Error('first argument must be an addon interface');
   }
 
   logger.debug(`Creating Express server with options: ${JSON.stringify(opts)}`);
@@ -195,7 +196,7 @@ function serveHTTP(addonInterface: AddonInterface, opts: ServerOptions = {}) {
     const location = path.join(process.cwd(), opts.static);
     logger.debug(`Setting up static file serving from: ${location}`);
     try {
-      const fs = require('fs');
+      const fs = fsModule;
       if (!fs.existsSync(location)) {
         logger.debug(`Static directory does not exist: ${location}`);
         throw new Error('directory to serve does not exist');

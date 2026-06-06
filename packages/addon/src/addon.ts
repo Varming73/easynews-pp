@@ -1,6 +1,6 @@
-import { Cache, ContentType } from 'stremio-addon-sdk';
-import addonBuilder from 'stremio-addon-sdk/src/builder';
-import { manifest } from './manifest';
+import type { Cache, ContentType } from '@stremio-addon/sdk';
+import { addonBuilder } from '@stremio-addon/compat';
+import { manifest } from './manifest.js';
 import {
   buildSearchQuery,
   createStreamPath,
@@ -15,12 +15,12 @@ import {
   matchesTitle,
   getAlternativeTitles,
   isAuthError,
-} from './utils';
+} from './utils.js';
 import { EasynewsAPI, SearchOptions, EasynewsSearchResponse } from 'easynews-plus-plus-api';
-import { publicMetaProvider } from './meta';
-import { Stream } from './types';
-import customTitlesJson from '../../../custom-titles.json';
-import { getUILanguage, translations } from './i18n';
+import { publicMetaProvider } from './meta.js';
+import { Stream } from './types.js';
+import customTitlesJson from '../../../custom-titles.json' with { type: 'json' };
+import { getUILanguage, translations } from './i18n/index.js';
 import { createLogger } from 'easynews-plus-plus-shared';
 
 // Extended configuration interface
@@ -125,7 +125,7 @@ try {
 }
 
 // Import custom template for landing page
-import customTemplate from './custom-template';
+import customTemplate from './custom-template.js';
 
 // Export landing HTML for Cloudflare Worker
 export const landingHTML = customTemplate(manifest);

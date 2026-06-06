@@ -17,7 +17,7 @@ import {
 } from '../src/utils';
 import { FileData } from 'easynews-plus-plus-api';
 import * as parseTorrentTitle from 'parse-torrent-title';
-import type { ContentType } from 'stremio-addon-sdk';
+import type { ContentType } from '@stremio-addon/sdk';
 
 vi.mock('parse-torrent-title', () => ({
   parse: vi.fn(),

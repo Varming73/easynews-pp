@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { Manifest } from 'stremio-addon-sdk';
+import { Manifest } from '@stremio-addon/sdk';
 
 // Mock the dependencies
 vi.mock('../src/custom-template', () => ({

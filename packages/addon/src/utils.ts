@@ -1,6 +1,6 @@
 import { EasynewsSearchResponse, FileData } from 'easynews-plus-plus-api';
-import { MetaProviderResponse } from './meta';
-import { ContentType } from 'stremio-addon-sdk';
+import { MetaProviderResponse } from './meta.js';
+import type { ContentType } from '@stremio-addon/sdk';
 import { parse as parseTorrentTitle } from 'parse-torrent-title';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -8,7 +8,7 @@ import { createLogger } from 'easynews-plus-plus-shared';
 import { Buffer } from 'buffer';
 
 // Import the custom titles JSON directly
-import customTitlesJson from '../../../custom-titles.json';
+import customTitlesJson from '../../../custom-titles.json' with { type: 'json' };
 
 // Load .env file to ensure we have all environment variables
 function loadEnv() {

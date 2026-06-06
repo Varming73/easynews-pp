@@ -1,7 +1,8 @@
-import { Manifest, ContentType } from 'stremio-addon-sdk';
-import { translations, DEFAULT_LANGUAGE, LANGUAGE_DISPLAY_NAMES } from './i18n';
+import type { Manifest, ContentType } from '@stremio-addon/sdk';
+import { translations, DEFAULT_LANGUAGE, LANGUAGE_DISPLAY_NAMES } from './i18n/index.js';
 
-import { version, description } from '../../../package.json';
+import pkg from '../../../package.json' with { type: 'json' };
+const { version, description } = pkg;
 
 // Get the English translations for the initial setup
 const englishTranslations = translations[DEFAULT_LANGUAGE];

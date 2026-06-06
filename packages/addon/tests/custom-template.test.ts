@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import landingTemplate from '../src/custom-template';
 import { getTranslations } from '../src/i18n';
-import { Manifest } from 'stremio-addon-sdk';
+import { Manifest } from '@stremio-addon/sdk';
 
 // Mock the i18n and logger functions
 vi.mock('../src/i18n', () => ({
