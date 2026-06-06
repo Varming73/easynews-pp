@@ -209,19 +209,6 @@ $ npm run deploy:cf
 $ npm run preview:cf
 ```
 
-#### Beamup Deployment
-
-```bash
-# Clone the repository
-$ git clone https://github.com/pantelx/easynews-plus-plus.git && cd easynews-plus-plus
-# Install dependencies
-$ npm i
-# Copy the .env.example file to .env
-$ cp .env.example .env
-# Deploy to Beamup
-$ npm run deploy:beamup
-```
-
 ---
 
 ### 💻 Development Setup

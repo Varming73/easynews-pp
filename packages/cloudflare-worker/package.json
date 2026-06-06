@@ -14,11 +14,11 @@
   "dependencies": {
     "easynews-plus-plus-addon": "file:../addon",
     "easynews-plus-plus-shared": "file:../shared",
-    "hono": "^4.5.3",
+    "hono": "^4.10.3",
     "hono-stremio": "^0.1.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250507.0",
-    "wrangler": "^4.14.3"
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "wrangler": "^4.45.0"
   }
 }

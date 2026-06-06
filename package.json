@@ -14,7 +14,6 @@
     "dev": "npm -w packages/addon run start:dev",
     "dev:cf": "npm -w packages/cloudflare-worker run dev",
     "deploy:cf": "npm run build:cf && npm -w packages/cloudflare-worker run deploy",
-    "deploy:beamup": "npm run build && beamup",
     "preview:cf": "npm run build:cf && npm -w packages/cloudflare-worker run preview",
     "release": "bumpp"
   },
@@ -34,9 +33,8 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
-    "@types/node": "^22.15.14",
-    "beamup-cli": "^1.3.2",
-    "bumpp": "^10.1.0",
+    "@types/node": "^24.9.1",
+    "bumpp": "^10.3.1",
     "prettier": "^3.3.2",
     "ts-unused-exports": "^11.0.1",
     "tsx": "^4.19.4",
