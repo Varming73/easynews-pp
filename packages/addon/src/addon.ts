@@ -851,7 +851,8 @@ builder.defineStreamHandler(
         if (rejectedSample) parts.push(`${rejectedSample} sample/too-short`);
         if (rejectedTitle) parts.push(`${rejectedTitle} title-mismatch`);
         if (rejectedDuplicate) parts.push(`${rejectedDuplicate} duplicate`);
-        if (matchedBeforeFilters) parts.push(`${matchedBeforeFilters} dropped by quality/size filters`);
+        if (matchedBeforeFilters)
+          parts.push(`${matchedBeforeFilters} dropped by quality/size filters`);
         const breakdown = totalFilesSeen
           ? `: ${totalFilesSeen} video file(s) found, all rejected (${parts.join(', ')})`
           : '';
@@ -861,7 +862,12 @@ builder.defineStreamHandler(
         // dropped by title or filters): the full release almost certainly exists but
         // is posted only as packed/password-protected RAR archives, which the
         // VIDEO-only search excludes and which are not directly streamable.
-        if (totalFilesSeen > 0 && matchedBeforeFilters === 0 && rejectedSample > 0 && rejectedTitle === 0) {
+        if (
+          totalFilesSeen > 0 &&
+          matchedBeforeFilters === 0 &&
+          rejectedSample > 0 &&
+          rejectedTitle === 0
+        ) {
           logger.info(
             `Only sample files indexed for ${id} — the full release is likely posted only as ` +
               `packed/password-protected RAR archives, which are not directly streamable.`
