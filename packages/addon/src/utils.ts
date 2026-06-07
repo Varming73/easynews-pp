@@ -282,9 +282,34 @@ export function matchesTitle(title: string, query: string, strict: boolean) {
     const seMatch = sanitizedQuery.match(seasonEpisodePattern);
     if (seMatch && seMatch[0]) {
       const pattern = seMatch[0].toLowerCase();
-      const result = sanitizedTitle.includes(pattern);
-      logger.debug(`Non-strict mode - checking for pattern "${pattern}" in title: ${result}`);
-      return result;
+
+      // The episode code must be present in the candidate title...
+      if (!sanitizedTitle.includes(pattern)) {
+        logger.debug(`Non-strict mode - episode code "${pattern}" not in title, rejecting`);
+        return false;
+      }
+
+      // ...but the episode code alone isn't enough: many unrelated shows share
+      // codes like "s01e01". Also require the query's show-name words to overlap
+      // the title, using the same 70% threshold as the multi-word check below so
+      // non-strict matching stays permissive without matching the wrong show.
+      const nameWords = sanitizedQuery
+        .replace(seasonEpisodePattern, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2);
+
+      if (nameWords.length === 0) {
+        // Query was essentially just the episode code — accept the code match.
+        logger.debug(`Non-strict mode - episode-only query, matched on "${pattern}"`);
+        return true;
+      }
+
+      const matchingNameWords = nameWords.filter(word => sanitizedTitle.includes(word)).length;
+      const nameRatio = matchingNameWords / nameWords.length;
+      logger.debug(
+        `Non-strict mode - episode "${pattern}" present, name overlap ${nameRatio.toFixed(2)} (${matchingNameWords}/${nameWords.length})`
+      );
+      return nameRatio >= 0.7;
     }
   }
 

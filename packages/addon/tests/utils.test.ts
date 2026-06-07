@@ -79,6 +79,11 @@ describe('matchesTitle', () => {
     ['Game of Thrones s03E05', 'Game of Thrones s03e05', true],
     ['The Walking Dead S10E16', 'the walking dead s10e16', true],
     ['The Walking Dead S10E16', 'the walking dead s10e15', false],
+    // Non-strict series: the episode code alone must NOT match an unrelated show
+    ['Some Other Show S01E01', 'breaking bad s01e01', false],
+    ['Joey S01E01', 'friends s01e01', false],
+    // ...but a genuine match with extra release tokens still passes
+    ['Breaking Bad S01E01 1080p WEB-DL', 'breaking bad s01e01', true],
     ['Stranger Things 4K HDR', 'stranger things', true],
     ['Interstellar (2014) 1080p', 'interstellar 2014', true],
   ])("matches the title '%s' with query '%s'", (title, query, expected) => {
