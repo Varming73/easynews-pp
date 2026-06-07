@@ -39,3 +39,4 @@ wrangler.toml
 
 # Local agent/tooling state
 .memsearch/
+CLAUDE.md
