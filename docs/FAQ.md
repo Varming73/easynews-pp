@@ -1,9 +1,9 @@
 # FAQ — How it works
 
-The [README](../README.md) covers the two most common questions ("what is Easynews?" and
-"why do I sometimes get no streams?"). This page goes deeper into how the addon actually
-behaves.
+The [README](../README.md) answers "what is Easynews?". This page goes deeper into how the
+addon actually behaves.
 
+- [Why does a title show no streams (or only a 1-minute clip)?](#why-does-a-title-show-no-streams-or-only-a-1-minute-clip)
 - [How does caching work?](#how-does-caching-work)
 - [How does title matching work?](#how-does-title-matching-work)
 - [How do custom titles & TMDB translations work?](#how-do-custom-titles--tmdb-translations-work)
@@ -15,6 +15,35 @@ behaves.
 - [Platform support](#platform-support)
 
 ---
+
+## Why does a title show no streams (or only a 1-minute clip)?
+
+You can see the title on Easynews, but the addon shows nothing — or just a short clip. This is
+the most common "is it broken?" question, and it usually isn't a bug.
+
+The addon can only play files that are already complete, ready-to-watch videos. A lot of
+content on Usenet — and therefore on Easynews — isn't stored that way. It's often uploaded as a
+set of **compressed archive files**: a single movie split into dozens of pieces (`.rar` parts)
+and frequently locked with a **password**. To watch one of those you'd first have to download
+every piece, reassemble them and unlock them with a password that lives on a separate website —
+something a streaming addon can't do on the fly.
+
+When that archived version is the only one available, two things happen:
+
+1. The actual release is invisible to the addon, because it isn't a playable video file.
+2. The only plain video left is usually a short **sample** — a 1–2 minute preview the uploader
+   includes. The addon deliberately hides these, so you don't tap a "movie" and get a
+   one-minute clip.
+
+The result is "no streams," even though the title clearly appears on Easynews. It simply depends
+on how that particular release was uploaded. Different uploads of the same title are often plain
+video files, so another episode, a different release, or the same title re-uploaded later may
+play just fine.
+
+> [!TIP]
+> If you self-host with debug logging enabled (`EASYNEWS_LOG_LEVEL=debug`), the log spells this
+> out — for example: _"Only sample files indexed … the full release is likely posted only as
+> packed/password-protected RAR archives, which are not directly streamable."_
 
 ## How does caching work?
 
@@ -72,8 +101,9 @@ Classic hard cases:
 For these, self-host and add the troublesome titles to
 [`custom-titles.json`](../custom-titles.json).
 
-> See also the README's [_"I can see the title on Easynews, so why no streams?"_](../README.md#i-can-see-the-title-on-easynews-so-why-does-the-addon-show-no-streams-or-only-a-1-minute-clip)
-> — packed/password-protected RAR releases are a common reason a title shows up but won't play.
+> See also [_"Why does a title show no streams?"_](#why-does-a-title-show-no-streams-or-only-a-1-minute-clip)
+> above — packed/password-protected RAR releases are a common reason a title shows up but won't
+> play.
 
 ## How does quality prioritization work?
 
