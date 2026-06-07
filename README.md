@@ -37,18 +37,23 @@ Adding alternate or translated titles to [`custom-titles.json`](./custom-titles.
 
 ## 🏠 Self-Hosting
 
-There's no public instance, so you run your own. Docker Compose is the quickest path:
+There's no public instance, so you run your own. A prebuilt multi-arch (amd64/arm64) Docker image is published to GitHub Container Registry on every release, so you don't have to build anything.
+
+**Docker Compose** (recommended — pulls the prebuilt image and wires up your `.env` and `custom-titles.json`):
 
 ```bash
-# Clone the repository
 git clone https://github.com/Varming73/easynews-plus-plus.git && cd easynews-plus-plus
-# Copy the example environment file
 cp .env.example .env
-# Start the container
 docker-compose up -d
 ```
 
-Then open `http://localhost:1337/` and configure the addon. The bundled `docker-compose.yml` uses the pre-built image from GitHub Container Registry by default, so there's nothing to build.
+**Plain Docker** (just the image, nothing to clone):
+
+```bash
+docker run -d -p 1337:1337 ghcr.io/varming73/easynews-plus-plus:latest
+```
+
+Then open `http://localhost:1337/` and configure the addon. Available tags are on the [GitHub Packages page](https://github.com/Varming73/easynews-plus-plus/pkgs/container/easynews-plus-plus).
 
 Prefer to run it from source, deploy to a Cloudflare Worker, or set it up for development? See **[docs/CONFIGURATION.md](./docs/CONFIGURATION.md)**.
 
@@ -71,21 +76,7 @@ For self-hosters, behavior can be tuned with environment variables (port, log le
 
 Easynews is a premium Usenet provider with a web-based browser that lets you search, preview and download files from Usenet without a separate newsreader. It works as an alternative to debrid services (Real-Debrid, Premiumize, AllDebrid, etc.). **An active Easynews subscription is required to use this addon.**
 
-### I can see the title on Easynews, so why does the addon show no streams (or only a 1-minute clip)?
-
-The addon can only play files that are already complete, ready-to-watch videos. A lot of content on Usenet — and therefore on Easynews — isn't stored that way. It's often uploaded as a set of **compressed archive files**: a single movie split into dozens of pieces (`.rar` parts) and frequently locked with a **password**. To watch one of those you'd first have to download every piece, reassemble them and unlock them with a password that lives on a separate website — something a streaming addon can't do on the fly.
-
-When that archived version is the only one available, two things happen:
-
-1. The actual release is invisible to the addon, because it isn't a playable video file.
-2. The only plain video left is usually a short **sample** — a 1–2 minute preview the uploader includes. The addon deliberately hides these, so you don't tap a "movie" and get a one-minute clip.
-
-The result is "no streams," even though the title clearly appears on Easynews. This isn't a bug, and there's normally nothing to reconfigure — it simply depends on how that particular release was uploaded. Different uploads of the same title are often plain video files, so another episode, a different release, or the same title re-uploaded later may play just fine.
-
-> [!TIP]
-> If you self-host with debug logging enabled (`EASYNEWS_LOG_LEVEL=debug`), the log spells this out — for example: _"Only sample files indexed … the full release is likely posted only as packed/password-protected RAR archives, which are not directly streamable."_
-
-**More questions** — caching, title matching, sorting, language filtering and platform compatibility — are answered in **[docs/FAQ.md](./docs/FAQ.md)**.
+**More questions?** Why a title shows no streams (or only a 1-minute clip), plus caching, title matching, sorting, language filtering and platform compatibility — all answered in **[docs/FAQ.md](./docs/FAQ.md)**.
 
 ---
 
