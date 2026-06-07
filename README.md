@@ -97,6 +97,9 @@
 - Optimized for Stremio, Omni, Vidi and Fusion compatibility
 - Authentication implementation that works without basic auth headers for media streaming
 
+> [!NOTE]  
+> The platform support listed below is inherited from upstream and has not all been re-verified in this fork.
+
 #### ✅ **Fully Supported & Tested:**
 
 - tvOS (Omni & Vidi)
@@ -229,14 +232,14 @@ $ npm run dev:cf
 
 ### 📝 Release Process
 
-Bump the version tag, release and publish to npm:
+Bump the version and tag the release:
 
 ```bash
 $ npm run release
 ```
 
 > [!NOTE]  
-> Enable workflow "docker-publish" to automatically build and publish the docker image to GitHub Container Registry. Enable workflow "release" to automatically create a new version tag and release on GitHub.
+> Pushing a `v*` tag triggers the `release.yml` workflow (which creates a GitHub Release with an auto-generated changelog) and `docker-publish.yml` (which builds and publishes the Docker image to GitHub Container Registry). The package is not published to npm.
 
 ### 📦 Workflows
 
@@ -393,19 +396,6 @@ The addon offers multiple sorting methods that can be selected in the configurat
 **All options use the same relevance-first API search, then sort results locally**
 
 You can select your preferred sorting method in the addon configuration page. For optimal language prioritization, the "Language First" option works best when you've also set your preferred language.
-
-### Why is there a 50-stream limit?
-
-~~The addon limits results to the top 50 highest quality streams to:~~
-
-~~1. Prevent media player overload~~
-~~2. Optimize performance and response times~~
-~~3. Focus on quality over quantity~~
-~~4. Streamline the user experience~~
-
-~~After quality sorting, the top 50 streams will represent the best available options, making additional results unnecessary.~~
-
-This limit was removed in version 2.4.0.
 
 ### How does the language filter work?
 
