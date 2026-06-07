@@ -97,6 +97,9 @@
 - Optimized for Stremio, Omni, Vidi and Fusion compatibility
 - Authentication implementation that works without basic auth headers for media streaming
 
+> [!NOTE]  
+> The platform support listed below is inherited from upstream and has not all been re-verified in this fork.
+
 #### ✅ **Fully Supported & Tested:**
 
 - tvOS (Omni & Vidi)
@@ -229,14 +232,14 @@ $ npm run dev:cf
 
 ### 📝 Release Process
 
-Bump the version tag, release and publish to npm:
+Bump the version and tag the release:
 
 ```bash
 $ npm run release
 ```
 
 > [!NOTE]  
-> Enable workflow "docker-publish" to automatically build and publish the docker image to GitHub Container Registry. Enable workflow "release" to automatically create a new version tag and release on GitHub.
+> Pushing a `v*` tag triggers the `release.yml` workflow (which creates a GitHub Release with an auto-generated changelog) and `docker-publish.yml` (which builds and publishes the Docker image to GitHub Container Registry). The package is not published to npm.
 
 ### 📦 Workflows
 
@@ -356,6 +359,20 @@ Examples of challenging cases:
 
 For these cases, consider self-hosting and adding custom titles or using the public instance and create a new issue with the custom titles you want to get supported.
 
+### I can see the title on Easynews, so why does the addon show no streams (or only a 1-minute clip)?
+
+The addon can only play files that are already complete, ready-to-watch videos. A lot of content on Usenet — and therefore on Easynews — isn't stored that way. It's often uploaded as a set of **compressed archive files**: a single movie split into dozens of pieces (`.rar` parts) and frequently locked with a **password**. To watch one of those you'd first have to download every piece, reassemble them, and unlock them with a password that lives on a separate website — something a streaming addon can't do on the fly.
+
+When that archived version is the only one available, two things happen:
+
+1. The actual release is invisible to the addon, because it isn't a playable video file.
+2. The only plain video left is usually a short **sample** — a 1–2 minute preview the uploader includes. The addon deliberately hides these, so you don't tap a "movie" and get a one-minute clip.
+
+The result is "no streams," even though the title clearly appears on Easynews. This isn't a bug, and there's normally nothing to reconfigure — it simply depends on how that particular release was uploaded. Different uploads of the same title are often plain video files, so another episode, a different release, or the same title re-uploaded later may play just fine.
+
+> [!TIP]  
+> If you self-host with debug logging enabled (`EASYNEWS_LOG_LEVEL=debug`), the log spells this out — for example: _"Only sample files indexed … the full release is likely posted only as packed/password-protected RAR archives, which are not directly streamable."_
+
 ### How does the quality prioritization work?
 
 The addon automatically prioritizes streams based on several factors:
@@ -379,19 +396,6 @@ The addon offers multiple sorting methods that can be selected in the configurat
 **All options use the same relevance-first API search, then sort results locally**
 
 You can select your preferred sorting method in the addon configuration page. For optimal language prioritization, the "Language First" option works best when you've also set your preferred language.
-
-### Why is there a 50-stream limit?
-
-~~The addon limits results to the top 50 highest quality streams to:~~
-
-~~1. Prevent media player overload~~
-~~2. Optimize performance and response times~~
-~~3. Focus on quality over quantity~~
-~~4. Streamline the user experience~~
-
-~~After quality sorting, the top 50 streams will represent the best available options, making additional results unnecessary.~~
-
-This limit was removed in version 2.4.0.
 
 ### How does the language filter work?
 
